@@ -1,49 +1,8 @@
-/*
-  # Project Management System Schema
 
-  1. New Tables
-    - `workspaces`
-      - Main container for projects and teams
-    - `projects`
-      - Individual projects within workspaces
-    - `tasks`
-      - Project tasks with status tracking
-    - `task_comments`
-      - Comments on tasks
-    - `task_attachments`
-      - File attachments for tasks
-    - `task_assignments`
-      - User assignments to tasks
-    - `workspace_members`
-      - Users in workspaces with roles
-    - `notifications`
-      - System notifications
-    - `messages`
-      - Internal messaging system
-    - `project_roles`
-      - Role definitions for workspace members
-
-  2. Security
-    - RLS enabled on all tables
-    - Policies for workspace member access
-    - Role-based access control
-
-  3. Features
-    - Hierarchical project structure
-    - Task management with status tracking
-    - File attachments support
-    - Commenting system
-    - Role-based permissions
-    - Notification system
-    - Internal messaging
-*/
-
--- Create enum types for status values
 CREATE TYPE task_status AS ENUM ('todo', 'in_progress', 'review', 'completed');
 CREATE TYPE priority_level AS ENUM ('low', 'medium', 'high', 'urgent');
 CREATE TYPE member_role AS ENUM ('owner', 'admin', 'member', 'guest');
 
--- Workspaces table
 CREATE TABLE workspaces (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
@@ -53,7 +12,7 @@ CREATE TABLE workspaces (
   updated_at timestamptz DEFAULT now()
 );
 
--- Projects table
+
 CREATE TABLE projects (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id uuid REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -67,7 +26,6 @@ CREATE TABLE projects (
   updated_at timestamptz DEFAULT now()
 );
 
--- Tasks table
 CREATE TABLE tasks (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id uuid REFERENCES projects(id) ON DELETE CASCADE,
@@ -84,7 +42,6 @@ CREATE TABLE tasks (
   updated_at timestamptz DEFAULT now()
 );
 
--- Task comments
 CREATE TABLE task_comments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   task_id uuid REFERENCES tasks(id) ON DELETE CASCADE,
@@ -94,7 +51,6 @@ CREATE TABLE task_comments (
   updated_at timestamptz DEFAULT now()
 );
 
--- Task attachments
 CREATE TABLE task_attachments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   task_id uuid REFERENCES tasks(id) ON DELETE CASCADE,
@@ -106,7 +62,6 @@ CREATE TABLE task_attachments (
   created_at timestamptz DEFAULT now()
 );
 
--- Task assignments
 CREATE TABLE task_assignments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   task_id uuid REFERENCES tasks(id) ON DELETE CASCADE,
@@ -115,7 +70,6 @@ CREATE TABLE task_assignments (
   assigned_by uuid REFERENCES auth.users(id) ON DELETE SET NULL
 );
 
--- Workspace members
 CREATE TABLE workspace_members (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id uuid REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -125,7 +79,6 @@ CREATE TABLE workspace_members (
   UNIQUE(workspace_id, user_id)
 );
 
--- Notifications
 CREATE TABLE notifications (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -135,7 +88,6 @@ CREATE TABLE notifications (
   created_at timestamptz DEFAULT now()
 );
 
--- Messages
 CREATE TABLE messages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id uuid REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -146,7 +98,6 @@ CREATE TABLE messages (
   created_at timestamptz DEFAULT now()
 );
 
--- Enable Row Level Security
 ALTER TABLE workspaces ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
@@ -157,7 +108,6 @@ ALTER TABLE workspace_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 
--- Create indexes for better performance
 CREATE INDEX idx_projects_workspace ON projects(workspace_id);
 CREATE INDEX idx_tasks_project ON tasks(project_id);
 CREATE INDEX idx_task_comments_task ON task_comments(task_id);
@@ -167,9 +117,6 @@ CREATE INDEX idx_workspace_members_workspace ON workspace_members(workspace_id);
 CREATE INDEX idx_notifications_user ON notifications(user_id);
 CREATE INDEX idx_messages_workspace ON messages(workspace_id);
 
--- RLS Policies
-
--- Workspace policies
 CREATE POLICY "Workspace members can view workspaces"
   ON workspaces FOR SELECT
   USING (
@@ -191,7 +138,6 @@ CREATE POLICY "Workspace owners and admins can update workspaces"
     )
   );
 
--- Project policies
 CREATE POLICY "Workspace members can view projects"
   ON projects FOR SELECT
   USING (
@@ -202,7 +148,6 @@ CREATE POLICY "Workspace members can view projects"
     )
   );
 
--- Task policies
 CREATE POLICY "Workspace members can view tasks"
   ON tasks FOR SELECT
   USING (
@@ -215,12 +160,10 @@ CREATE POLICY "Workspace members can view tasks"
     )
   );
 
--- Notification policies
 CREATE POLICY "Users can view their own notifications"
   ON notifications FOR SELECT
   USING (auth.uid() = user_id);
 
--- Message policies
 CREATE POLICY "Users can view their own messages"
   ON messages FOR SELECT
   USING (
@@ -228,7 +171,6 @@ CREATE POLICY "Users can view their own messages"
     auth.uid() = sender_id
   );
 
--- Create functions for common operations
 CREATE OR REPLACE FUNCTION get_workspace_members(workspace_id uuid)
 RETURNS TABLE (
   user_id uuid,
